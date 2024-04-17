@@ -6,14 +6,14 @@ import tokenize
 from gensim.models import Word2Vec
 import io
 from langchain_text_splitters import CharacterTextSplitter
-from sklearn.neighbors import NearestNeighbors
-from nltk.tokenize import word_tokenize
+# from sklearn.neighbors import NearestNeighbors
+# from nltk.tokenize import word_tokenize
 
 
 local_repo_path = "/Users/tsingh/Documents/SweepRepo/repo"
 django_repo_url = "https://github.com/django/django.git"
 
-#Repo.clone_from(django_repo_url, local_repo_path)
+# Repo.clone_from(django_repo_url, local_repo_path)
 
 def parse_repository_files(repo_path):
     files = []
@@ -32,14 +32,22 @@ def tokenize_code(content):
     text = " ".join(content)
     
     # Initialize the CharacterTextSplitter
-    text_splitter = CharacterTextSplitter(
-        chunk_size=100, chunk_overlap=0
+    text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+    encoding="cl100k_base", chunk_size=100, chunk_overlap=0
     )
     chunks = text_splitter.split_text(text)
     
     return chunks
 
 tokenized_files = [(filename, tokenize_code(content)) for filename, content in files]
+
+for filename, chunks in tokenized_files:
+    print(f"File: {filename}")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"Chunk {i}:")
+        print(chunk)
+        print("=" * 50)  # Separate chunks for better readability
+
 
 def generate_embeddings(chunks):
     model = Word2Vec(chunks, vector_size=100, window=5, min_count=1, workers=4)
@@ -50,12 +58,7 @@ def generate_embeddings(chunks):
 embeddings_files = [(filename, generate_embeddings(chunks)) for filename, chunks in tokenized_files]
 
 
-for filename, chunks in tokenized_files:
-    print(f"File: {filename}")
-    for i, chunk in enumerate(chunks, 1):
-        print(f"Chunk {i}:")
-        print(chunk)
-        print("=" * 50)  # Separate chunks for better readability
+
 
 embedding_store = {}
 
@@ -109,7 +112,6 @@ def generate_embedding_for_request(user_request, word2vec_model, text_splitter):
     # Split the user request into text chunks
     text_chunks = text_splitter.split_text(user_request)
     
-    # Calculate the average embedding for each text chunk
     chunk_embeddings = []
     for chunk in text_chunks:
 
@@ -119,14 +121,12 @@ def generate_embedding_for_request(user_request, word2vec_model, text_splitter):
         chunk_embedding = calculate_average_embedding(tokens, word2vec_model)
         chunk_embeddings.append(chunk_embedding)
     
-    # Calculate the average embedding across all chunks
     request_embedding = calculate_average_embedding(chunk_embeddings, word2vec_model)
     
     return request_embedding
 
 
 def calculate_average_embedding(embeddings, word2vec_model):
-    # Calculate the average embedding by taking the mean along the first axis (dimension)
     if embeddings:
         avg_embedding = sum(embeddings) / len(embeddings)
     else:
@@ -155,18 +155,12 @@ def find_relevant_chunks(user_embedding, embedding_store, k=5):
     
     return relevant_chunks
 
+
 def generate_modified_code(user_request, relevant_chunks):    
     # placeholder
     modified_code = "Placeholder modified code"
     
     return modified_code
-
-
-
-
-
-
-
 
 # Retrieve the API key from environment variables
 api_key = ''
